@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,7 +12,6 @@
       color: #fff;
       margin: 0;
       padding: 10px;
-      overflow-y: auto;
     }
     #container {
       display: flex;
@@ -33,73 +33,90 @@
       animation: fadeIn 0.5s ease forwards;
     }
     @keyframes fadeIn {
-      to {
-        opacity: 1;
-      }
+      to { opacity: 1; }
+    }
+    button {
+      margin-bottom: 10px;
+      background: #333;
+      color: #fff;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h2 style="margin-bottom: 10px">Live Monad TX Visualizer</h2>
+  <h2>Live Monad TX Visualizer</h2>
+  <button onclick="toggleDummy()">Toggle Dummy</button>
   <div id="container"></div>
+
   <script>
     const provider = new ethers.providers.JsonRpcProvider("https://monad-testnet.drpc.org");
     const container = document.getElementById("container");
-    const MAX_BOXES = 50;
-    const MY_ADDRESS = "0x408e68F9dce5A0cd175Cd7C7EefB634D5f03A257".toLowerCase();function getBoxColor(mon) {
-  if (mon < 1) return '#0ff';
-  if (mon < 10) return '#0f0';
-  return '#f80';
-}
+    let useDummy = true;
 
-function renderTx(tx) {
-  const mon = parseFloat(ethers.utils.formatEther(tx.value));
-  const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
-  const box = document.createElement("div");
-  box.className = "box";
-  box.style.width = `${size}px`;
-  box.style.height = `${size}px`;
-  box.style.backgroundColor = getBoxColor(mon);
-
-  box.innerHTML = `
-    <strong>From:</strong> ${tx.from.slice(0, 10)}...<br>
-    <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
-    <strong>MON:</strong> ${mon.toFixed(4)}<br>
-    <a href="https://monadexplorer.com/tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
-  `;
-
-  container.prepend(box);
-
-  // Hapus box lama kalau lebih dari MAX_BOXES
-  while (container.childNodes.length > MAX_BOXES) {
-    container.removeChild(container.lastChild);
-  }
-}
-
-async function fetchBlocks() {
-  try {
-    const latestBlockNumber = await provider.getBlockNumber();
-    for (let i = 0; i < 5; i++) {
-      const block = await provider.getBlockWithTransactions(latestBlockNumber - i);
-      block.transactions.forEach((tx) => {
-        if (
-          tx.value &&
-          ethers.BigNumber.from(tx.value).gt(0) &&
-          (tx.from?.toLowerCase() === MY_ADDRESS || tx.to?.toLowerCase() === MY_ADDRESS)
-        ) {
-          renderTx(tx);
-        }
-      });
+    function getBoxColor(mon) {
+      if (mon < 1) return '#0ff';
+      if (mon < 10) return '#0f0';
+      return '#f80';
     }
-  } catch (err) {
-    console.error("Fetch block error:", err);
-  }
-}
 
-// Jalankan pertama kali
-fetchBlocks();
-setInterval(fetchBlocks, 5000);
+    function renderTx(tx) {
+      const mon = parseFloat(ethers.utils.formatEther(tx.value));
+      const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
+      const box = document.createElement("div");
+      box.className = "box";
+      box.style.width = `${size}px`;
+      box.style.height = `${size}px`;
+      box.style.backgroundColor = getBoxColor(mon);
 
+      box.innerHTML = `
+        <strong>From:</strong> ${tx.from?.slice(0, 10)}...<br>
+        <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
+        <strong>MON:</strong> ${mon.toFixed(4)}<br>
+        <a href="https://monadexplorer.com/tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
+      `;
+      container.prepend(box);
+    }
+
+    async function fetchBlocks() {
+      if (useDummy) {
+        const dummy = {
+          from: "0xDUMMYYYY000000001",
+          to: "0xBEEEEEFFFFAAAA222",
+          value: ethers.utils.parseEther((Math.random() * 50).toFixed(4)),
+          hash: `0xdummy${Math.floor(Math.random() * 99999)}`
+        };
+        renderTx(dummy);
+        return;
+      }
+
+      try {
+        const latestBlock = await provider.getBlockNumber();
+        const block = await provider.getBlockWithTransactions(latestBlock);
+        let txsRendered = 0;
+
+        block.transactions.forEach((tx) => {
+          if (tx.value && ethers.BigNumber.from(tx.value).gt(0)) {
+            renderTx(tx);
+            txsRendered++;
+          }
+        });
+
+        if (txsRendered === 0) {
+          useDummy = true;
+        }
+      } catch (err) {
+        console.error("Error:", err);
+      }
+    }
+
+    function toggleDummy() {
+      useDummy = !useDummy;
+    }
+
+    setInterval(fetchBlocks, 5000);
   </script>
 </body>
 </html>
