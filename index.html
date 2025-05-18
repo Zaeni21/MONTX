@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live Monad TX Visualizer</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.min.js"></script>
+  <title>Monad TX Visualizer</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
       font-family: sans-serif;
-      margin: 0;
-      padding: 0;
       background: #0e0e0e;
       color: #fff;
       display: flex;
@@ -24,8 +22,6 @@
       padding: 10px;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      align-items: flex-start;
       color: #0ff;
       transition: transform 0.3s ease;
       overflow-wrap: anywhere;
@@ -40,6 +36,25 @@
     const provider = new ethers.providers.JsonRpcProvider("https://monad-testnet.drpc.org");
     let lastBlock = 0;
 
+    function renderTx(tx) {
+      const mon = parseFloat(ethers.utils.formatEther(tx.value));
+      const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
+
+      const box = document.createElement("div");
+      box.className = "box";
+      box.style.width = `${size}px`;
+      box.style.height = `${size}px`;
+
+      box.innerHTML = `
+        <strong>From:</strong> ${tx.from.slice(0, 10)}...<br>
+        <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
+        <strong>MON:</strong> ${mon.toFixed(4)}<br>
+        <a href="https://monadexplorer.com/tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
+      `;
+
+      document.body.prepend(box);
+    }
+
     async function fetchTx() {
       try {
         const block = await provider.getBlock("latest", true);
@@ -48,31 +63,25 @@
 
           block.transactions.forEach((tx) => {
             if (tx.value && ethers.BigNumber.from(tx.value).gt(0)) {
-  const mon = parseFloat(ethers.utils.formatEther(tx.value));
-  const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
-
-  const box = document.createElement("div");
-  box.className = "box";
-  box.style.width = `${size}px`;
-  box.style.height = `${size}px`;
-
-  box.innerHTML = `
-    <strong>From:</strong> ${tx.from.slice(0, 10)}...<br>
-    <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
-    <strong>MON:</strong> ${mon.toFixed(4)}<br>
-    <a href="https://monadexplorer.com/tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
-  `;
-
-  document.body.prepend(box);
-}
+              renderTx(tx);
+            }
           });
         }
       } catch (err) {
-        console.error("Error fetching tx:", err);
+        console.error("Fetch TX error:", err);
       }
     }
 
-    setInterval(fetchTx, 5000); // Poll tiap 5 detik
+    // Tampilkan dummy TX saat awal buka web
+    renderTx({
+      from: "0x1234567890abcdef1234",
+      to: "0x9876543210abcdef9876",
+      value: ethers.utils.parseEther("5"),
+      hash: "0xdummyhash123"
+    });
+
+    // Polling setiap 5 detik
+    setInterval(fetchTx, 5000);
   </script>
 </body>
 </html>
