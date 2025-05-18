@@ -37,35 +37,42 @@
 </head>
 <body>
   <script>
-    const provider = new ethers.providers.WebSocketProvider(
-      "wss://monad-testnet.g.alchemy.com/v2/JuVd6Y7UBwuCBuiFa36kvRiI_2VkCmos"
-    );
+    const provider = new ethers.providers.JsonRpcProvider("https://monad-testnet.drpc.org");
+    let lastBlock = 0;
 
-    provider.on("pending", async (txHash) => {
+    async function fetchTx() {
       try {
-        const tx = await provider.getTransaction(txHash);
-        if (tx && tx.value.gt(0)) {
-          const mon = parseFloat(ethers.utils.formatEther(tx.value));
-          const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
+        const block = await provider.getBlock("latest", true);
+        if (block && block.number !== lastBlock) {
+          lastBlock = block.number;
 
-          const box = document.createElement("div");
-          box.className = "box";
-          box.style.width = `${size}px`;
-          box.style.height = `${size}px`;
+          block.transactions.forEach((tx) => {
+            if (tx.value && tx.value.gt(0)) {
+              const mon = parseFloat(ethers.utils.formatEther(tx.value));
+              const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
 
-          box.innerHTML = `
-            <strong>From:</strong> ${tx.from.slice(0, 10)}...<br>
-            <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
-            <strong>MON:</strong> ${mon.toFixed(4)}<br>
-            <a href="https://monadexplorer.com/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
-          `;
+              const box = document.createElement("div");
+              box.className = "box";
+              box.style.width = `${size}px`;
+              box.style.height = `${size}px`;
 
-          document.body.prepend(box);
+              box.innerHTML = `
+                <strong>From:</strong> ${tx.from.slice(0, 10)}...<br>
+                <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
+                <strong>MON:</strong> ${mon.toFixed(4)}<br>
+                <a href="https://monadexplorer.com//tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
+              `;
+
+              document.body.prepend(box);
+            }
+          });
         }
       } catch (err) {
-        console.error("Tx Error:", err);
+        console.error("Error fetching tx:", err);
       }
-    });
+    }
+
+    setInterval(fetchTx, 5000); // Poll tiap 5 detik
   </script>
 </body>
 </html>
