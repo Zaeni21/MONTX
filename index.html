@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Monad TX Visualizer</title>
+  <title>Monad TX Visualizer (Real-Time)</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <style>
     body {
@@ -38,11 +38,11 @@
   </style>
 </head>
 <body>
-  <h2>Live Monad TX Visualizer</h2>
+  <h2>Live Monad TX Visualizer (Real-Time)</h2>
   <div id="container"></div>
 
   <script>
-    const provider = new ethers.providers.JsonRpcProvider("https://monad-testnet.drpc.org");
+    const provider = new ethers.providers.WebSocketProvider("wss://monad-testnet.blockvision.org/v1/2wMnShA5XNvhMiJXqRgeO2TG3TI");
     const container = document.getElementById("container");
     const shownTxs = new Set();
 
@@ -62,36 +62,24 @@
       box.style.backgroundColor = getBoxColor(mon);
 
       box.innerHTML = `
-        <strong>${mon.toFixed(4)} MON</strong><br>
+        <strong style="font-size: 1.2em;">${mon.toFixed(4)} MON</strong>
         <a href="https://monadexplorer.com/tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
       `;
 
       container.prepend(box);
     }
 
-    async function fetchBlocks() {
+    provider.on("pending", async (txHash) => {
       try {
-        const latest = await provider.getBlockNumber();
-        for (let i = 0; i < 5; i++) {
-          const block = await provider.getBlockWithTransactions(latest - i);
-          block.transactions.forEach((tx) => {
-            if (
-              tx.value &&
-              ethers.BigNumber.from(tx.value).gt(0) &&
-              !shownTxs.has(tx.hash)
-            ) {
-              shownTxs.add(tx.hash);
-              renderTx(tx);
-            }
-          });
+        const tx = await provider.getTransaction(txHash);
+        if (tx && tx.value && ethers.BigNumber.from(tx.value).gt(0) && !shownTxs.has(tx.hash)) {
+          shownTxs.add(tx.hash);
+          renderTx(tx);
         }
       } catch (err) {
-        console.error("Fetch error:", err);
+        console.error("WebSocket TX Error:", err);
       }
-    }
-
-    fetchBlocks();
-    setInterval(fetchBlocks, 5000);
+    });
   </script>
 </body>
 </html>
