@@ -47,24 +47,24 @@
           lastBlock = block.number;
 
           block.transactions.forEach((tx) => {
-            if (tx.value && tx.value.gt(0)) {
-              const mon = parseFloat(ethers.utils.formatEther(tx.value));
-              const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
+            if (tx.value && ethers.BigNumber.from(tx.value).gt(0)) {
+  const mon = parseFloat(ethers.utils.formatEther(tx.value));
+  const size = Math.min(300, Math.max(60, Math.log2(mon + 1) * 60));
 
-              const box = document.createElement("div");
-              box.className = "box";
-              box.style.width = `${size}px`;
-              box.style.height = `${size}px`;
+  const box = document.createElement("div");
+  box.className = "box";
+  box.style.width = `${size}px`;
+  box.style.height = `${size}px`;
 
-              box.innerHTML = `
-                <strong>From:</strong> ${tx.from.slice(0, 10)}...<br>
-                <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
-                <strong>MON:</strong> ${mon.toFixed(4)}<br>
-                <a href="https://monadexplorer.com//tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
-              `;
+  box.innerHTML = `
+    <strong>From:</strong> ${tx.from.slice(0, 10)}...<br>
+    <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
+    <strong>MON:</strong> ${mon.toFixed(4)}<br>
+    <a href="https://monadexplorer.com/tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
+  `;
 
-              document.body.prepend(box);
-            }
+  document.body.prepend(box);
+}
           });
         }
       } catch (err) {
