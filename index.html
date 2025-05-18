@@ -44,7 +44,7 @@
   <script>
     const provider = new ethers.providers.JsonRpcProvider("https://monad-testnet.drpc.org");
     const container = document.getElementById("container");
-    let shownTxs = new Set();
+    const shownTxs = new Set();
 
     function getBoxColor(mon) {
       if (mon < 1) return '#0ff';
@@ -61,7 +61,7 @@
       box.style.height = `${size}px`;
       box.style.backgroundColor = getBoxColor(mon);
 
-      const fromShort = tx.from.slice(0, 6) + '...' + tx.from.slice(-4);
+      const fromShort = tx.from ? tx.from.slice(0, 6) + '...' + tx.from.slice(-4) : 'Unknown';
       const toShort = tx.to ? tx.to.slice(0, 6) + '...' + tx.to.slice(-4) : 'Contract';
 
       box.innerHTML = `
@@ -74,28 +74,44 @@
       container.prepend(box);
     }
 
+    function renderDummy() {
+      const dummy = {
+        from: "0xDUMMYYYY000000001",
+        to: "0xBEEEEEFFFFAAAA222",
+        value: ethers.utils.parseEther("3.1415"),
+        hash: "0xdummyhashfallback"
+      };
+      renderTx(dummy);
+    }
+
     async function fetchBlocks() {
       try {
         const latest = await provider.getBlockNumber();
+        let rendered = 0;
+
         for (let i = 0; i < 5; i++) {
           const block = await provider.getBlockWithTransactions(latest - i);
           block.transactions.forEach((tx) => {
-            if (
-              tx.value &&
-              ethers.BigNumber.from(tx.value).gt(0) &&
-              !shownTxs.has(tx.hash)
-            ) {
+            if (tx.value && ethers.BigNumber.from(tx.value).gt(0) && !shownTxs.has(tx.hash)) {
               shownTxs.add(tx.hash);
               renderTx(tx);
+              rendered++;
             }
           });
         }
+
+        // Fallback kalau sepi
+        if (rendered === 0 && shownTxs.size === 0) {
+          renderDummy();
+        }
       } catch (err) {
         console.error("Fetch error:", err);
+        if (shownTxs.size === 0) renderDummy();
       }
     }
 
-    setInterval(fetchBlocks, 5000);
+    fetchBlocks(); // run on load
+    setInterval(fetchBlocks, 5000); // polling
   </script>
 </body>
 </html>
