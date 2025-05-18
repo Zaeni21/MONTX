@@ -35,26 +35,16 @@
     @keyframes fadeIn {
       to { opacity: 1; }
     }
-    button {
-      margin-bottom: 10px;
-      background: #333;
-      color: #fff;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
   <h2>Live Monad TX Visualizer</h2>
-  <button onclick="toggleDummy()">Toggle Dummy</button>
   <div id="container"></div>
 
   <script>
     const provider = new ethers.providers.JsonRpcProvider("https://monad-testnet.drpc.org");
     const container = document.getElementById("container");
-    let useDummy = true;
+    let shownTxs = new Set();
 
     function getBoxColor(mon) {
       if (mon < 1) return '#0ff';
@@ -71,49 +61,38 @@
       box.style.height = `${size}px`;
       box.style.backgroundColor = getBoxColor(mon);
 
+      const fromShort = tx.from.slice(0, 6) + '...' + tx.from.slice(-4);
+      const toShort = tx.to ? tx.to.slice(0, 6) + '...' + tx.to.slice(-4) : 'Contract';
+
       box.innerHTML = `
-        <strong>From:</strong> ${tx.from?.slice(0, 10)}...<br>
-        <strong>To:</strong> ${tx.to?.slice(0, 10) || 'Contract'}...<br>
+        <strong>From:</strong> ${fromShort}<br>
+        <strong>To:</strong> ${toShort}<br>
         <strong>MON:</strong> ${mon.toFixed(4)}<br>
         <a href="https://monadexplorer.com/tx/${tx.hash}" target="_blank" style="color:#fff;text-decoration:underline">View Tx</a>
       `;
+
       container.prepend(box);
     }
 
     async function fetchBlocks() {
-      if (useDummy) {
-        const dummy = {
-          from: "0xDUMMYYYY000000001",
-          to: "0xBEEEEEFFFFAAAA222",
-          value: ethers.utils.parseEther((Math.random() * 50).toFixed(4)),
-          hash: `0xdummy${Math.floor(Math.random() * 99999)}`
-        };
-        renderTx(dummy);
-        return;
-      }
-
       try {
-        const latestBlock = await provider.getBlockNumber();
-        const block = await provider.getBlockWithTransactions(latestBlock);
-        let txsRendered = 0;
-
-        block.transactions.forEach((tx) => {
-          if (tx.value && ethers.BigNumber.from(tx.value).gt(0)) {
-            renderTx(tx);
-            txsRendered++;
-          }
-        });
-
-        if (txsRendered === 0) {
-          useDummy = true;
+        const latest = await provider.getBlockNumber();
+        for (let i = 0; i < 5; i++) {
+          const block = await provider.getBlockWithTransactions(latest - i);
+          block.transactions.forEach((tx) => {
+            if (
+              tx.value &&
+              ethers.BigNumber.from(tx.value).gt(0) &&
+              !shownTxs.has(tx.hash)
+            ) {
+              shownTxs.add(tx.hash);
+              renderTx(tx);
+            }
+          });
         }
       } catch (err) {
-        console.error("Error:", err);
+        console.error("Fetch error:", err);
       }
-    }
-
-    function toggleDummy() {
-      useDummy = !useDummy;
     }
 
     setInterval(fetchBlocks, 5000);
